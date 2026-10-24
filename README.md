@@ -15,6 +15,6 @@ The analysis includes:
 The dataset contains **731 daily observations** from Capital Bikeshare for 2011–2012.
 
 ### Tools 
-- R
+- R  
 - R Markdown
 - ggplot2
