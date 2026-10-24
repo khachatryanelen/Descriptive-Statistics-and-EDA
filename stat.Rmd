@@ -1,0 +1,943 @@
+## 2. Data Preparation
+
+The `day.csv` dataset was imported into R. The dimensions and structure of the dataset were examined to check the number of observations and variables and to identify how each variable was stored in R.
+
+```{r}
+# Import the dataset
+bike <- read.csv("day.csv")
+
+# Check dimensions and original structure
+dim(bike)
+str(bike)
+```
+
+The dataset contains 731 observations and 16 variables. The initial structure showed that `dteday` was stored as a character variable. The categorical variables `season`, `yr`, `mnth`, `holiday`, `weekday`, `workingday`, and `weathersit` were stored as integers.
+
+### Missing Values and Possible Inconsistencies
+
+The dataset was checked for missing values, duplicate observations, and possible inconsistencies. The values of the categorical variables were checked to make sure they were within their expected categories. The total rental count was also checked to confirm that it was equal to the sum of casual and registered users.
+
+```{r}
+# Check missing values
+colSums(is.na(bike))
+
+# Check duplicate observations
+sum(duplicated(bike))
+
+# Check categorical values
+unique(bike$season)
+unique(bike$yr)
+unique(bike$mnth)
+unique(bike$holiday)
+unique(bike$weekday)
+unique(bike$workingday)
+unique(bike$weathersit)
+
+# Check consistency of total rental count
+all(bike$cnt == bike$casual + bike$registered)
+```
+
+No missing values or duplicate observations were found. The categorical variables contained values within their expected ranges. `season` contained values 1–4, `yr` contained 0–1, `mnth` contained 1–12, `holiday` contained 0–1, `weekday` contained 0–6, `workingday` contained 0–1, and `weathersit` contained 1–3. In addition, `cnt` was equal to the sum of `casual` and `registered` for every observation. Therefore, no clear coding errors or inconsistencies were identified.
+
+### Unusual Observations
+
+Potentially unusual observations in the numerical variables were identified using the standard boxplot rule.
+
+```{r}
+# Identify potential unusual observations
+boxplot.stats(bike$temp)$out
+boxplot.stats(bike$atemp)$out
+boxplot.stats(bike$hum)$out
+boxplot.stats(bike$windspeed)$out
+boxplot.stats(bike$casual)$out
+boxplot.stats(bike$registered)$out
+boxplot.stats(bike$cnt)$out
+```
+
+Using the boxplot rule, potentially unusual observations were identified for `hum`, `windspeed`, and `casual`. There were 2 unusual humidity values, 13 unusual wind-speed values, and 44 unusual casual-rental values. No boxplot outliers were identified for `temp`, `atemp`, `registered`, or `cnt`.
+
+No observations were removed during data preparation. These potentially unusual observations will be investigated further in the outlier analysis.
+
+### Changes to Data Types and Category Labels
+
+Several variables were changed to more appropriate data types before the analysis. The variable `dteday` was converted from character to Date because its values represent dates rather than ordinary text.
+
+The variables `season`, `yr`, `mnth`, `holiday`, `weekday`, `workingday`, and `weathersit` were converted from integers to factors because their numerical codes represent categories rather than numerical measurements. Descriptive labels were assigned to the categories to make tables, graphs, and interpretations easier to understand.
+
+```{r}
+# Convert date to Date type
+bike$dteday <- as.Date(bike$dteday)
+
+# Convert season to factor
+bike$season <- factor(bike$season,
+                      levels = c(1, 2, 3, 4),
+                      labels = c("Winter", "Spring", "Summer", "Fall"))
+
+# Convert year to factor
+bike$yr <- factor(bike$yr,
+                  levels = c(0, 1),
+                  labels = c("2011", "2012"))
+
+# Convert month to factor
+bike$mnth <- factor(bike$mnth,
+                    levels = 1:12,
+                    labels = c("January", "February", "March", "April",
+                               "May", "June", "July", "August",
+                               "September", "October", "November", "December"))
+
+# Convert holiday to factor
+bike$holiday <- factor(bike$holiday,
+                       levels = c(0, 1),
+                       labels = c("No", "Yes"))
+
+# Convert weekday to factor
+bike$weekday <- factor(bike$weekday,
+                       levels = 0:6,
+                       labels = c("Sunday", "Monday", "Tuesday",
+                                  "Wednesday", "Thursday", "Friday", "Saturday"))
+
+# Convert working day to factor
+bike$workingday <- factor(bike$workingday,
+                          levels = c(0, 1),
+                          labels = c("No", "Yes"))
+
+# Convert weather situation to factor
+bike$weathersit <- factor(bike$weathersit,
+                          levels = c(1, 2, 3),
+                          labels = c("Clear/Few Clouds",
+                                     "Mist/Cloudy",
+                                     "Light Snow/Rain"))
+
+# Check the final structure and prepared dataset
+str(bike)
+head(bike)
+```
+
+After data preparation, `dteday` is stored as a Date variable. `season`, `yr`, `mnth`, `holiday`, `weekday`, `workingday`, and `weathersit` are stored as factors with descriptive category labels. The numerical variables remain numerical.
+
+No observations were removed and no missing values were replaced. The numerical measurements and bike-rental counts were not changed. The changes only corrected the data types and replaced categorical codes with descriptive labels. This makes the categorical variables easier to interpret and prevents their numerical codes from being incorrectly treated as numerical measurements in later analyses.
+
+
+
+
+
+
+
+
+
+
+## 3. Analysis of Categorical Variables
+
+Four important categorical variables were selected: `season`, `weathersit`, `workingday`, and `weekday`. For each variable, a frequency table, a relative-frequency table, and a bar chart are presented.
+
+### Season
+
+```{r}
+# Frequency table
+table(bike$season)
+
+# Relative-frequency table
+table(bike$season) / length(bike$season)
+
+# Bar chart
+barplot(table(bike$season),
+        main = "Distribution of Seasons",
+        xlab = "Season",
+        ylab = "Frequency")
+```
+
+Summer is the most common season with frequency 188 and relative frequency 0.2572. Fall is the least common with frequency 178 and relative frequency 0.2435. Winter and Spring have relative frequencies 0.2476 and 0.2517, respectively. The relative frequencies are very close to each other, so the distribution is approximately balanced. There are no rare or problematic categories.
+
+### Weather Situation
+
+```{r}
+# Frequency table
+table(bike$weathersit)
+
+# Relative-frequency table
+table(bike$weathersit) / length(bike$weathersit)
+
+# Bar chart
+barplot(table(bike$weathersit),
+        main = "Distribution of Weather Situation",
+        xlab = "Weather Situation",
+        ylab = "Frequency")
+```
+
+Clear/Few Clouds is the most common weather situation with frequency 463 and relative frequency 0.6334. Mist/Cloudy has frequency 247 and relative frequency 0.3379. Light Snow/Rain is the least common category with frequency 21 and relative frequency 0.0287. Therefore, the distribution is not balanced, and Light Snow/Rain is a rare category.
+
+### Working Day
+
+```{r}
+# Frequency table
+table(bike$workingday)
+
+# Relative-frequency table
+table(bike$workingday) / length(bike$workingday)
+
+# Bar chart
+barplot(table(bike$workingday),
+        main = "Distribution of Working Days",
+        xlab = "Working Day",
+        ylab = "Frequency")
+```
+
+Working days are more common, with frequency 500 and relative frequency 0.6840. Non-working days have frequency 231 and relative frequency 0.3160. Therefore, the distribution is not balanced, but neither category is rare.
+
+### Weekday
+
+```{r}
+# Frequency table
+table(bike$weekday)
+
+# Relative-frequency table
+table(bike$weekday) / length(bike$weekday)
+
+# Bar chart
+barplot(table(bike$weekday),
+        main = "Distribution of Weekdays",
+        xlab = "Weekday",
+        ylab = "Frequency")
+```
+
+The distribution of weekdays is almost perfectly balanced. Sunday, Monday, and Saturday each have frequency 105 and relative frequency 0.1436. Tuesday, Wednesday, Thursday, and Friday each have frequency 104 and relative frequency 0.1423. There are no rare or problematic categories.
+
+## 3.1 Interaction Between Categorical Variables
+
+Two pairs of categorical variables were selected to investigate their association.
+
+### Season and Weather Situation
+
+The relationship between `season` and `weathersit` was investigated to see whether the distribution of weather situations changes across seasons.
+
+```{r}
+# Contingency table
+season_weather <- table(bike$season, bike$weathersit)
+season_weather
+
+# Comparative bar chart
+barplot(season_weather,
+        beside = TRUE,
+        legend.text = TRUE,
+        col = c("mistyrose", "honeydew", "aliceblue", "cornsilk"),
+        main = "Weather Situation by Season",
+        xlab = "Weather Situation",
+        ylab = "Frequency")
+```
+
+Clear/Few Clouds is the most common weather situation in every season. Summer has the highest frequency of Clear/Few Clouds days, with 136 observations. Winter has 111, Spring has 113, and Fall has 103.
+
+Mist/Cloudy occurs 66 times in Winter, 68 times in Spring, 48 times in Summer, and 65 times in Fall. Light Snow/Rain is rare in every season, but it occurs most frequently in Fall, with 10 observations, compared with 4 in Winter, 3 in Spring, and 4 in Summer.
+
+Therefore, Clear/Few Clouds is dominant in every season, but the distribution of weather situations changes somewhat depending on the season.
+
+### Weekday and Working Day
+
+The relationship between `weekday` and `workingday` was investigated to see whether working-day status changes across the days of the week.
+
+```{r}
+# Contingency table
+weekday_working <- table(bike$weekday, bike$workingday)
+weekday_working
+
+# Comparative bar chart
+barplot(weekday_working,
+        beside = TRUE,
+        legend.text = TRUE,
+        col = c("mistyrose", "cornsilk", "lemonchiffon", "honeydew",
+                "aliceblue", "lavender", "lavenderblush"),
+        main = "Working Day by Weekday",
+        xlab = "Working Day",
+        ylab = "Frequency")
+```
+
+Working-day status changes clearly depending on the weekday. All 105 Sundays and all 105 Saturdays are non-working days. In contrast, most Monday through Friday observations are working days.
+
+Monday has 90 working days and 15 non-working days. Tuesday and Wednesday each have 103 working days and 1 non-working day. Thursday and Friday each have 102 working days and 2 non-working days.
+
+Therefore, there is a clear association between weekday and working-day status. Weekends are non-working days, while almost all weekdays are working days.
+
+
+
+
+
+
+
+
+
+## 4. Analysis of Numerical Variables
+
+Four important numerical variables were selected for analysis: `temp`, `hum`, `windspeed`, and `cnt`. These variables describe weather conditions and the total number of daily bike rentals.
+
+For each variable, descriptive statistics, a histogram, a density plot, and a boxplot were used to examine the center, variability, distributional shape, skewness, and possible outliers.
+
+```{r}
+# Function for descriptive statistics
+numerical_stats <- function(x) {
+
+  five <- fivenum(x)
+
+  c(
+    Mean = mean(x),
+    Median = median(x),
+    Minimum = five[1],
+    Maximum = five[5],
+    Range = five[5] - five[1],
+    Q1 = five[2],
+    Q3 = five[4],
+    IQR = five[4] - five[2],
+    SD = sd(x),
+    CV = sd(x) / mean(x)
+  )
+}
+
+# Descriptive statistics
+numerical_stats(bike$temp)
+numerical_stats(bike$hum)
+numerical_stats(bike$windspeed)
+numerical_stats(bike$cnt)
+```
+
+The quartiles are obtained using `fivenum()`, so they follow the quartile calculation used in the course. The interquartile range is calculated as \(Q_3-Q_1\), and the coefficient of variation is calculated as \(CV=s/\bar{x}\).
+
+### Temperature
+
+```{r}
+hist(bike$temp,
+     main = "Distribution of Temperature",
+     xlab = "Normalized Temperature")
+
+hist(bike$temp,
+     probability = TRUE,
+     main = "Density Distribution of Temperature",
+     xlab = "Normalized Temperature")
+
+lines(density(bike$temp),
+      lwd = 2)
+
+boxplot(bike$temp,
+        main = "Boxplot of Temperature",
+        ylab = "Normalized Temperature")
+
+# Potential outliers
+boxplot.stats(bike$temp)$out
+```
+
+The mean normalized temperature is 0.495 and the median is 0.498. These values are very close, indicating that the center of the distribution is around 0.50.
+
+The histogram and density plot are fairly balanced overall and do not show strong skewness. The boxplot shows no potential outliers.
+
+### Humidity
+
+```{r}
+hist(bike$hum,
+     main = "Distribution of Humidity",
+     xlab = "Normalized Humidity")
+
+hist(bike$hum,
+     probability = TRUE,
+     main = "Density Distribution of Humidity",
+     xlab = "Normalized Humidity")
+
+lines(density(bike$hum),
+      lwd = 2)
+
+boxplot(bike$hum,
+        main = "Boxplot of Humidity",
+        ylab = "Normalized Humidity")
+
+# Potential outliers
+boxplot.stats(bike$hum)$out
+```
+
+The mean normalized humidity is 0.628 and the median is 0.627, so the center of the distribution is around 0.63.
+
+Most observations are concentrated around 0.5 to 0.7. The histogram and density plot show the overall shape of the distribution, while the boxplot identifies two potential low outliers.
+
+### Wind Speed
+
+```{r}
+hist(bike$windspeed,
+     main = "Distribution of Wind Speed",
+     xlab = "Normalized Wind Speed")
+
+hist(bike$windspeed,
+     probability = TRUE,
+     main = "Density Distribution of Wind Speed",
+     xlab = "Normalized Wind Speed")
+
+lines(density(bike$windspeed),
+      lwd = 2)
+
+boxplot(bike$windspeed,
+        main = "Boxplot of Wind Speed",
+        ylab = "Normalized Wind Speed")
+
+# Potential outliers
+boxplot.stats(bike$windspeed)$out
+```
+
+The mean normalized wind speed is 0.190 and the median is 0.181. Since the mean is slightly larger than the median, this is consistent with a right-skewed distribution.
+
+The histogram and density plot show a longer upper tail, which also indicates right skewness. The boxplot identifies 13 potential high outliers.
+
+### Total Bike Rentals
+
+```{r}
+hist(bike$cnt,
+     main = "Distribution of Total Bike Rentals",
+     xlab = "Total Rentals")
+
+hist(bike$cnt,
+     probability = TRUE,
+     main = "Density Distribution of Total Bike Rentals",
+     xlab = "Total Rentals")
+
+lines(density(bike$cnt),
+      lwd = 2)
+
+boxplot(bike$cnt,
+        main = "Boxplot of Total Bike Rentals",
+        ylab = "Total Rentals")
+
+# Potential outliers
+boxplot.stats(bike$cnt)$out
+```
+
+The mean number of daily bike rentals is 4504.349 and the median is 4548. Therefore, the center of the distribution is approximately 4500 rentals per day.
+
+The histogram and density plot are fairly balanced around the center and do not show strong skewness. The boxplot shows no potential outliers.
+
+### Overall Interpretation
+
+Temperature and total bike rentals have relatively balanced distributions with no boxplot outliers. Humidity contains two potential low outliers, while wind speed is right-skewed and contains several potential high outliers.
+
+The coefficient of variation provides an additional measure of relative variability and allows the variability of the numerical variables to be compared relative to their means.
+
+
+
+
+## 5. Numerical Variables by Categories
+
+This section investigates whether total daily bike rentals differ across seasons and weather conditions. For each comparison, grouped summary statistics and side-by-side boxplots are used to compare location, variability, and distributional shape.
+
+### 5.1 Total Bike Rentals by Season
+
+The distribution of total daily bike rentals (`cnt`) is compared across the four seasons.
+
+```{r}
+# Function for lecture-style IQR
+lecture_IQR <- function(x) {
+  five <- fivenum(x)
+  five[4] - five[2]
+}
+
+# Grouped summary statistics by season
+season_summary <- data.frame(
+  Season = levels(bike$season),
+  Mean = as.numeric(tapply(bike$cnt, bike$season, mean)),
+  Median = as.numeric(tapply(bike$cnt, bike$season, median)),
+  SD = as.numeric(tapply(bike$cnt, bike$season, sd)),
+  IQR = as.numeric(tapply(bike$cnt, bike$season, lecture_IQR)),
+  Minimum = as.numeric(tapply(bike$cnt, bike$season, min)),
+  Maximum = as.numeric(tapply(bike$cnt, bike$season, max))
+)
+
+season_summary
+```
+
+```{r}
+# Side-by-side boxplot
+boxplot(cnt ~ season,
+        data = bike,
+        main = "Total Bike Rentals by Season",
+        xlab = "Season",
+        ylab = "Total Daily Rentals")
+```
+
+The grouped summaries and boxplot are used to compare the center of the rental distributions across seasons using the mean and median. The standard deviation and interquartile range are used to compare variability. The boxplot also helps identify differences in distributional shape and possible unusual observations.
+
+```{r}
+# Violin plot of total bike rentals by season
+library(ggplot2)
+
+ggplot(bike, aes(x = season, y = cnt)) +
+  geom_violin() +
+  labs(title = "Total Bike Rentals by Season",
+       x = "Season",
+       y = "Total Daily Rentals")
+```
+
+The violin plot provides an additional view of the distribution of total bike rentals across seasons. Wider parts of each violin represent ranges where more observations are concentrated. This helps compare the distributional shapes across seasons and complements the information provided by the side-by-side boxplot.
+
+### 5.2 Total Bike Rentals by Weather Situation
+
+The distribution of total daily bike rentals is also compared across weather conditions.
+
+```{r}
+# Grouped summary statistics by weather situation
+weather_summary <- data.frame(
+  Weather = levels(bike$weathersit),
+  Mean = as.numeric(tapply(bike$cnt, bike$weathersit, mean)),
+  Median = as.numeric(tapply(bike$cnt, bike$weathersit, median)),
+  SD = as.numeric(tapply(bike$cnt, bike$weathersit, sd)),
+  IQR = as.numeric(tapply(bike$cnt, bike$weathersit, lecture_IQR)),
+  Minimum = as.numeric(tapply(bike$cnt, bike$weathersit, min)),
+  Maximum = as.numeric(tapply(bike$cnt, bike$weathersit, max))
+)
+
+weather_summary
+```
+
+```{r}
+# Side-by-side boxplot
+boxplot(cnt ~ weathersit,
+        data = bike,
+        main = "Total Bike Rentals by Weather Situation",
+        xlab = "Weather Situation",
+        ylab = "Total Daily Rentals")
+```
+
+The grouped summaries and boxplot allow comparison of the location, spread, and shape of daily bike-rental distributions across weather categories.
+
+## 6. Relationships Between Numerical Variables
+
+Two pairs of numerical variables were investigated: temperature with total bike rentals, and humidity with total bike rentals. Scatterplots, correlation coefficients, and covariances were used to examine the direction and strength of the linear relationships.
+
+### 6.1 Temperature and Total Bike Rentals
+
+```{r}
+# Correlation and covariance
+cor(bike$temp, bike$cnt)
+cov(bike$temp, bike$cnt)
+
+# Scatterplot
+plot(bike$temp, bike$cnt,
+     main = "Temperature and Total Bike Rentals",
+     xlab = "Normalized Temperature",
+     ylab = "Total Rentals",
+     pch = 19)
+```
+
+The correlation between normalized temperature and total bike rentals is 0.6275. Since \(0.6 \leq |\rho| < 0.8\), there is a **strong positive linear relationship** between temperature and total bike rentals. The positive sign indicates an increasing trend: higher temperatures tend to be associated with higher bike rentals.
+
+The covariance is 222.515. Its positive sign is also consistent with an increasing relationship between temperature and total rentals.
+
+The scatterplot shows an overall increasing pattern, although the observations are fairly spread out. The relationship is not perfectly linear. There are some observations with relatively low rental counts compared with other days having similar temperatures, but there is no single extreme observation that appears to dominate the relationship.
+
+### 6.2 Humidity and Total Bike Rentals
+
+```{r}
+# Correlation and covariance
+cor(bike$hum, bike$cnt)
+cov(bike$hum, bike$cnt)
+
+# Scatterplot
+plot(bike$hum, bike$cnt,
+     main = "Humidity and Total Bike Rentals",
+     xlab = "Normalized Humidity",
+     ylab = "Total Rentals",
+     pch = 19)
+```
+
+The correlation between normalized humidity and total bike rentals is -0.1007. Since \(0 < |\rho| < 0.2\), there is a **very weak negative linear relationship** between humidity and total bike rentals. The negative sign indicates a decreasing trend, but the linear relationship is very weak.
+
+The covariance is -27.773. Its negative sign is consistent with the decreasing direction of the relationship.
+
+The scatterplot shows considerable spread and no strong linear pattern. Therefore, humidity has a much weaker linear relationship with total bike rentals than temperature. There are some observations with very low humidity, but no single observation appears to dominate the overall relationship.
+
+### 6.3 Temperature and Total Bike Rentals by Season
+
+Season was used to investigate whether the relationship between temperature and total bike rentals changes across groups.
+
+```{r}
+# Scatterplot by season
+plot(bike$temp, bike$cnt,
+     col = as.numeric(bike$season),
+     pch = 19,
+     main = "Temperature and Total Rentals by Season",
+     xlab = "Normalized Temperature",
+     ylab = "Total Rentals")
+
+legend("topleft",
+       legend = levels(bike$season),
+       col = 1:length(levels(bike$season)),
+       pch = 19)
+
+# Correlation in Winter
+cor(bike$temp[bike$season == "Winter"],
+    bike$cnt[bike$season == "Winter"])
+
+# Correlation in Spring
+cor(bike$temp[bike$season == "Spring"],
+    bike$cnt[bike$season == "Spring"])
+
+# Correlation in Summer
+cor(bike$temp[bike$season == "Summer"],
+    bike$cnt[bike$season == "Summer"])
+
+# Correlation in Fall
+cor(bike$temp[bike$season == "Fall"],
+    bike$cnt[bike$season == "Fall"])
+```
+
+The relationship between temperature and total bike rentals differs across seasons.
+
+The correlation in Winter is 0.6692. Since \(0.6 \leq |\rho| < 0.8\), there is a **strong positive linear relationship** between temperature and total rentals in Winter.
+
+The correlation in Spring is 0.4769. Since \(0.4 \leq |\rho| < 0.6\), there is a **moderate positive linear relationship**.
+
+The correlation in Summer is -0.0328. Since \(0 < |\rho| < 0.2\), there is a **very weak negative linear relationship**.
+
+The correlation in Fall is 0.3977. Since \(0.2 \leq |\rho| < 0.4\), there is a **weak positive linear relationship**.
+
+Therefore, both the direction and strength of the linear relationship between temperature and total bike rentals change across seasons. The strongest linear relationship is observed in Winter, while the relationship is very weak in Summer. This shows that the overall positive relationship between temperature and total rentals is not the same within every season.
+
+
+
+
+## 7. Distributional Analysis and QQ Plots
+
+Normalized temperature (`temp`) was selected for distributional analysis. A Normal distribution is considered as a possible theoretical distribution. A histogram and Normal QQ plot are used to investigate whether the empirical distribution of temperature is reasonably consistent with a Normal distribution.
+
+### 7.1 Normal Distribution and QQ Plot
+
+First, numerical summaries and a histogram are used to examine the empirical distribution of normalized temperature.
+
+```{r}
+# Numerical summary of temperature
+temp_five <- fivenum(bike$temp)
+
+mean(bike$temp)
+median(bike$temp)
+temp_five
+temp_five[4] - temp_five[2]
+sd(bike$temp)
+```
+
+The mean normalized temperature is 0.495 and the median is 0.498, so the two measures of center are very close. The first quartile is 0.337 and the third quartile is 0.655, giving an IQR of 0.318. The standard deviation is 0.183.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Histogram of normalized temperature
+hist(bike$temp,
+     main = "Distribution of Normalized Temperature",
+     xlab = "Normalized Temperature")
+```
+
+The histogram shows the empirical distribution of normalized temperature. The distribution is fairly balanced overall, but it does not have a clear bell-shaped Normal form. A Normal QQ plot is used for a more direct comparison with a Normal distribution.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Packages used for QQ plot with a QQ band
+require(ggplot2)
+require(qqplotr)
+
+# Data for QQ plot
+temp_data <- data.frame(variable = bike$temp)
+
+# Normal QQ plot with QQ band
+ggplot(data = temp_data,
+       mapping = aes(sample = variable)) +
+  stat_qq_band() +
+  stat_qq_line() +
+  stat_qq_point() +
+  labs(title = "Normal QQ Plot of Normalized Temperature",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles")
+```
+
+The QQ plot shows systematic departures from the Normal reference line, particularly in the tails. Some observations also depart from the QQ band. The deviations are not limited to only one or two isolated observations.
+
+Therefore, the empirical distribution of normalized temperature does not appear to be well described by a Normal distribution. The center is closer to the expected Normal pattern than the tails, but the systematic departures indicate that the overall distribution is not reasonably consistent with Normality.
+
+### 7.2 Distribution of Temperature Across Seasons
+
+The distribution of normalized temperature is compared across the four seasons to investigate whether the distributions differ in location, spread, skewness, tails, and overall shape.
+
+```{r}
+# Function for lecture-style IQR
+lecture_IQR <- function(x) {
+  five <- fivenum(x)
+  five[4] - five[2]
+}
+
+# Numerical summaries of temperature by season
+temperature_season_summary <- data.frame(
+  Mean = tapply(bike$temp, bike$season, mean),
+  Median = tapply(bike$temp, bike$season, median),
+  SD = tapply(bike$temp, bike$season, sd),
+  IQR = tapply(bike$temp, bike$season, lecture_IQR),
+  Minimum = tapply(bike$temp, bike$season, min),
+  Maximum = tapply(bike$temp, bike$season, max)
+)
+
+round(temperature_season_summary, 3)
+```
+
+The centers of the temperature distributions differ across seasons. Summer has the highest mean temperature at 0.706, followed by Spring at 0.544, Fall at 0.423, and Winter at 0.298.
+
+The variability also differs. Summer has the smallest standard deviation of 0.071 and the smallest IQR of 0.084, so Summer temperatures have the smallest spread. Fall has the largest IQR of 0.183, while Spring has the largest standard deviation of 0.123.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Side-by-side boxplots
+boxplot(temp ~ season,
+        data = bike,
+        main = "Normalized Temperature by Season",
+        xlab = "Season",
+        ylab = "Normalized Temperature")
+```
+
+The boxplots show clear differences in location and spread across the four seasons. Summer has the highest center and the smallest spread, while Winter has the lowest center. Spring and Fall have intermediate centers and larger spreads than Summer.
+
+The Summer boxplot shows several potentially unusual low temperature observations. Winter also shows a possible unusually high observation. These observations were retained because there is no evidence that they are data-entry errors.
+
+### Normal QQ Plots by Season
+
+Normal QQ plots are used to examine the temperature distribution within each season separately.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Winter
+qqnorm(bike$temp[bike$season == "Winter"],
+       main = "Normal QQ Plot - Winter")
+
+qqline(bike$temp[bike$season == "Winter"])
+```
+
+For Winter, the points are relatively close to the reference line through much of the center, but there are systematic deviations in the tails. Therefore, the Winter distribution shows some departure from Normality.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Spring
+qqnorm(bike$temp[bike$season == "Spring"],
+       main = "Normal QQ Plot - Spring")
+
+qqline(bike$temp[bike$season == "Spring"])
+```
+
+For Spring, many of the points in the center are relatively close to the reference line, while deviations are more noticeable in the tails. Therefore, the center is more consistent with a Normal distribution than the tails.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Summer
+qqnorm(bike$temp[bike$season == "Summer"],
+       main = "Normal QQ Plot - Summer")
+
+qqline(bike$temp[bike$season == "Summer"])
+```
+
+For Summer, the central observations are relatively close to the reference line, but there is a clear departure in the lower tail. These lower-tail observations are also visible as potentially unusual observations in the Summer boxplot.
+
+```{r, fig.width=6, fig.height=4, out.width="60%", fig.align="center"}
+# Fall
+qqnorm(bike$temp[bike$season == "Fall"],
+       main = "Normal QQ Plot - Fall")
+
+qqline(bike$temp[bike$season == "Fall"])
+```
+
+For Fall, the QQ plot shows systematic curvature and deviations from the reference line in both tails. Therefore, the Fall temperature distribution does not appear to be closely consistent with a Normal distribution.
+
+Overall, the temperature distributions cannot reasonably be considered the same across the four seasons. They differ clearly in location and spread, and the QQ plots also show differences in distributional shape and tail behavior. Summer is warmer and less variable, while Winter is colder. The seasonal differences also help explain why the combined temperature distribution is not well described by a single Normal distribution.
+
+
+## 8. Integrated Exploratory Data Analysis
+
+The previous analyses showed several patterns involving season, weather, temperature, and bike rentals. This section investigates three questions that combine several variables to better understand bike-sharing activity.
+
+### 8.1 Does Bike Usage Differ Across Seasons for Casual and Registered Users?
+
+**Question:** Does the number of bike rentals differ across seasons, and is the seasonal pattern the same for casual and registered users?
+
+**Relevant variables:** `season`, `casual`, and `registered`.
+
+```{r}
+# Mean casual rentals by season
+tapply(bike$casual, bike$season, mean)
+
+# Mean registered rentals by season
+tapply(bike$registered, bike$season, mean)
+
+# Median casual rentals by season
+tapply(bike$casual, bike$season, median)
+
+# Median registered rentals by season
+tapply(bike$registered, bike$season, median)
+```
+
+```{r, fig.width=6, fig.height=4, out.width="65%", fig.align="center"}
+# Casual rentals by season
+boxplot(casual ~ season,
+        data = bike,
+        main = "Casual Bike Rentals by Season",
+        xlab = "Season",
+        ylab = "Casual Rentals")
+```
+
+```{r, fig.width=6, fig.height=4, out.width="65%", fig.align="center"}
+# Registered rentals by season
+boxplot(registered ~ season,
+        data = bike,
+        main = "Registered Bike Rentals by Season",
+        xlab = "Season",
+        ylab = "Registered Rentals")
+```
+
+Casual and registered bike rentals both differ across seasons. For casual users, Summer has the highest mean number of rentals (1202.6), followed by Spring (1106.1), Fall (729.1), and Winter (334.9). The medians show the same general pattern, with Summer having the highest median and Winter the lowest.
+
+Registered users also have their highest mean rentals in Summer (4441.7) and their lowest in Winter (2269.2). However, registered rentals remain relatively high in both Spring and Fall. The boxplots show that Winter has a clearly lower center for both types of users.
+
+The seasonal pattern exists for both casual and registered users, but it is especially noticeable for casual users. Casual bike usage increases greatly from Winter to Spring and Summer, while registered usage remains comparatively high across Spring, Summer, and Fall. The casual-rental boxplots also show several potential high outliers.
+
+These results show an association between season and bike usage, but they do not show that season causes the differences. Temperature, weather conditions, working-day status, and other variables may also be related to the observed seasonal pattern.
+
+
+### 8.2 Does the Relationship Between Temperature and Bike Rentals Change Across Weather Conditions?
+
+**Question:** Is the relationship between temperature and total bike rentals the same under different weather conditions?
+
+**Relevant variables:** `temp`, `cnt`, and `weathersit`.
+
+```{r}
+# Overall correlation
+cor(bike$temp, bike$cnt)
+
+# Correlation during Clear/Few Clouds
+cor(bike$temp[bike$weathersit == "Clear/Few Clouds"],
+    bike$cnt[bike$weathersit == "Clear/Few Clouds"])
+
+# Correlation during Mist/Cloudy weather
+cor(bike$temp[bike$weathersit == "Mist/Cloudy"],
+    bike$cnt[bike$weathersit == "Mist/Cloudy"])
+
+# Correlation during Light Snow/Rain
+cor(bike$temp[bike$weathersit == "Light Snow/Rain"],
+    bike$cnt[bike$weathersit == "Light Snow/Rain"])
+```
+
+```{r, fig.width=6, fig.height=4, out.width="70%", fig.align="center"}
+# Temperature and total rentals by weather situation
+plot(bike$temp, bike$cnt,
+     col = as.numeric(bike$weathersit),
+     pch = 19,
+     main = "Temperature and Total Rentals by Weather",
+     xlab = "Normalized Temperature",
+     ylab = "Total Rentals")
+
+legend("topleft",
+       legend = levels(bike$weathersit),
+       col = 1:length(levels(bike$weathersit)),
+       pch = 19)
+```
+
+The overall correlation between temperature and total bike rentals is 0.6275, showing a positive relationship. When the data are separated by weather situation, the correlations are 0.6222 for Clear/Few Clouds, 0.6449 for Mist/Cloudy, and 0.6069 for Light Snow/Rain.
+
+All three correlations are positive and similar in magnitude. Therefore, the positive relationship between temperature and total rentals remains present across all three weather conditions. Mist/Cloudy weather has the strongest correlation and Light Snow/Rain has the weakest, but the differences are relatively small.
+
+The scatterplot also shows that days with Light Snow/Rain generally have lower rental counts than days with Clear/Few Clouds or Mist/Cloudy weather. There are also far fewer observations in the Light Snow/Rain category, so this group's correlation is based on fewer observations.
+
+Overall, weather condition does not appear to greatly change the direction of the relationship between temperature and rentals because the relationship remains positive in every group. However, weather conditions appear to be associated with the general level of bike usage.
+
+These results describe associations only. They do not establish that higher temperature causes more bike rentals or that a particular weather condition causes lower bike usage.
+
+
+### 8.3 Does Working-Day Status Affect Casual and Registered Users Differently?
+
+**Question:** Do casual and registered bike rentals differ between working and non-working days, and are the patterns the same for the two types of users?
+
+**Relevant variables:** `workingday`, `casual`, and `registered`.
+
+```{r}
+# Mean rentals by working-day status
+tapply(bike$casual, bike$workingday, mean)
+tapply(bike$registered, bike$workingday, mean)
+
+# Median rentals by working-day status
+tapply(bike$casual, bike$workingday, median)
+tapply(bike$registered, bike$workingday, median)
+```
+
+```{r, fig.width=6, fig.height=4, out.width="65%", fig.align="center"}
+# Casual rentals by working-day status
+boxplot(casual ~ workingday,
+        data = bike,
+        main = "Casual Rentals by Working-Day Status",
+        xlab = "Working Day",
+        ylab = "Casual Rentals")
+```
+
+```{r, fig.width=6, fig.height=4, out.width="65%", fig.align="center"}
+# Registered rentals by working-day status
+boxplot(registered ~ workingday,
+        data = bike,
+        main = "Registered Rentals by Working-Day Status",
+        xlab = "Working Day",
+        ylab = "Registered Rentals")
+```
+
+Working-day status is associated with casual and registered rentals in opposite ways. On non-working days, the mean number of casual rentals is 1371.1, compared with 606.6 on working days. The medians show the same pattern: 1338 casual rentals on non-working days compared with 616.5 on working days.
+
+For registered users, the pattern is reversed. The mean number of registered rentals is 3978.3 on working days compared with 2959.0 on non-working days. The median is also higher on working days, with 3866 registered rentals compared with 2928 on non-working days.
+
+The boxplots support these results. Casual rentals have a substantially higher center on non-working days, while registered rentals have a higher center on working days. Casual rentals also show greater spread on non-working days.
+
+Therefore, working-day status is associated differently with the two types of users. Casual users appear to use the bikes more on non-working days, while registered users use them more on working days. One possible explanation is that registered users may use the service more regularly, including for work-related travel, while casual usage may be more related to leisure. However, the dataset does not record the purpose of each trip, so this explanation cannot be confirmed from these data.
+
+The analysis shows an association between working-day status and rental behavior, not causation. Season, temperature, weather, holidays, and other factors may also contribute to these differences.
+
+
+## 9. Outliers and Unusual Observations
+
+Potentially unusual observations identified during the previous analyses were investigated using the boxplot method. In particular, humidity, wind speed, and casual bike rentals showed potential outliers.
+
+### 9.1 Identification of Potential Outliers
+
+```{r}
+# Potential humidity outliers
+boxplot.stats(bike$hum)$out
+
+# Potential wind-speed outliers
+boxplot.stats(bike$windspeed)$out
+
+# Potential casual-rental outliers
+boxplot.stats(bike$casual)$out
+```
+
+The boxplot method identifies observations outside the boxplot fences as potential outliers. However, this does not automatically mean that these observations are errors.
+
+### 9.2 Investigation of the Observations
+
+The unusual humidity and wind-speed values remain within the possible range of the normalized variables. Similarly, high values of casual bike rentals are possible because the variable represents the number of rentals observed during a day. There is no clear evidence from the dataset that these observations are data-entry errors.
+
+To investigate whether the potential outliers substantially influence the descriptive statistics, the means and medians are compared before and after excluding the values identified by the boxplot method.
+
+```{r}
+# Humidity
+hum_out <- boxplot.stats(bike$hum)$out
+
+mean(bike$hum)
+mean(bike$hum[!(bike$hum %in% hum_out)])
+
+median(bike$hum)
+median(bike$hum[!(bike$hum %in% hum_out)])
+
+
+# Wind speed
+wind_out <- boxplot.stats(bike$windspeed)$out
+
+mean(bike$windspeed)
+mean(bike$windspeed[!(bike$windspeed %in% wind_out)])
+
+median(bike$windspeed)
+median(bike$windspeed[!(bike$windspeed %in% wind_out)])
+
+
+# Casual rentals
+casual_out <- boxplot.stats(bike$casual)$out
+
+mean(bike$casual)
+mean(bike$casual[!(bike$casual %in% casual_out)])
+
+median(bike$casual)
+median(bike$casual[!(bike$casual %in% casual_out)])
+```
+
+The comparison of the statistics allows us to determine how strongly the potential outliers affect the center of each distribution. The median is expected to be less sensitive to extreme observations than the mean.
+
+The potential outliers are retained in the final analysis. There is no clear evidence that they are errors, and they may represent legitimate days with unusual weather conditions or unusually high bike usage. Removing them only because they are identified by the boxplot method could remove meaningful information from the dataset.
